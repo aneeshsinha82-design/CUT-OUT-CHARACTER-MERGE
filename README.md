@@ -39,6 +39,13 @@ Useful `render` flags: `--intro 1.5 --outro 2 --pan 0.7 --height 0.62 --handheld
 * `background`: `screens`, `seed`, `landmarks[]` (`type`: image | aqueduct | gate | tower | cathedral; `x`, `height`, `layer`: far | near), `props[]` (podium | flag | image), `theme.sky_top/sky_bottom`, `chalk_lines`.
 * `grade`, `vignette`, `grain`, `shadow` (`dx`, `dy`, `opacity`, `enabled`), `music`, `outro`.
 
+## Depth (2.5D) - players in the back
+* Each character has `depth` from `0` (front of the pitch) to `1` (far back near the horizon). Back characters are drawn smaller and higher on the grass, and always behind nearer ones.
+* Auto layout alternates front and back players and zooms the camera in on the back ones. Turn off with `--no-depth`.
+* Background layers zoom at different rates (far sky/buildings slowly, grass fastest), which gives the 3D parallax feel when the camera pushes in.
+* Props with `"front": true` are drawn in front of characters (e.g. a flag the player stands behind).
+* Group shot: give two characters the same `start`, different `depth` and `offset`; add a camera key with a `zoom` of 1.5-3 to push in on the back one.
+
 ## Layout
 ```
 cutmerge/    keying.py (black -> alpha)  background.py (scene)  camera.py  render.py  cli.py
