@@ -1,0 +1,74 @@
+name: Make video
+
+on:
+  workflow_dispatch:
+    inputs:
+      handle:
+        description: "Your handle for the watermark/outro (leave empty for none)"
+        required: false
+        default: ""
+      intro:
+        description: "Seconds of empty-scene pan at the start"
+        required: false
+        default: "1.5"
+      outro:
+        description: "Seconds of dark end card"
+        required: false
+        default: "2"
+      extra_args:
+        description: "Optional extra flags, e.g. --no-depth --handheld 0 --key-lo 10"
+        required: false
+        default: ""
+      use_demo_clips:
+        description: "No clips yet? Tick this to render with generated demo clips"
+        type: boolean
+        required: false
+        default: false
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install ffmpeg and Python packages
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y ffmpeg
+          pip install -r requirements.txt
+
+      - name: Create demo clips (only if ticked)
+        if: ${{ inputs.use_demo_clips }}
+        run: python examples/make_demo_clips.py
+
+      - name: Check that clips exist
+        run: |
+          count=$(find characters -maxdepth 1 -type f \( -iname '*.mp4' -o -iname '*.mov' -o -iname '*.m4v' -o -iname '*.webm' -o -iname '*.mkv' \) | wc -l)
+          echo "Found $count clip(s) in characters/"
+          if [ "$count" -eq 0 ]; then
+            echo "::error::No videos in the characters/ folder. Upload your black-background clips there, or tick use_demo_clips."
+            exit 1
+          fi
+
+      - name: Render video
+        env:
+          HANDLE: ${{ inputs.handle }}
+          INTRO: ${{ inputs.intro }}
+          OUTRO: ${{ inputs.outro }}
+          EXTRA_ARGS: ${{ inputs.extra_args }}
+        run: |
+          HANDLE_FLAG=""
+          if [ -n "$HANDLE" ]; then HANDLE_FLAG="--handle $HANDLE"; fi
+          python -m cutmerge render -c characters -o output/result.mp4 --intro "$INTRO" --outro "$OUTRO" $HANDLE_FLAG $EXTRA_ARGS
+
+      - name: Save the video so you can download it
+        uses: actions/upload-artifact@v4
+        with:
+          name: result-video
+          path: output/result.mp4
+          retention-days: 7
