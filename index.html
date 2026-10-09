@@ -1,14 +1,843 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cut Out Character Merge</title>
 <style>
-*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;font-family:Arial,sans-serif;background:#0b0b0f;color:#fff}
-.card{width:min(760px,92%);padding:44px 30px;border:1px solid #2a2a35;border-radius:22px;background:#15151c}
-h1{margin:0 0 12px;font-size:clamp(2rem,6vw,3.4rem)}p,li{color:#b9b9c5;line-height:1.6}code{background:#23232d;padding:2px 6px;border-radius:6px;color:#9fd}
-a{color:#8ab6e4}
-</style></head><body><main class="card">
-<h1>Cut Out Character Merge</h1>
-<p>Put many black-background character videos into a hand-drawn sketch scene with a moving camera, shadows and an outro.</p>
-<ol><li><code>pip install -r requirements.txt</code></li><li>Add clips to <code>characters/</code></li><li><code>python -m cutmerge render --handle you</code></li></ol>
-<p>See the <a href="https://github.com/aneeshsinha82-design/CUT-OUT-CHARACTER-MERGE#readme">README</a> and <code>docs/BACKGROUND_STYLE.md</code>.</p>
-</main></body></html>
+:root{--bg:#0b0b10;--card:#15151d;--line:#2a2a37;--txt:#f1f1f6;--mut:#9a9aae;--acc:#8ab6e4;--ok:#6fd08c;--bad:#ff8a8a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,Segoe UI,Arial,sans-serif;line-height:1.5}
+.wrap{max-width:860px;margin:0 auto;padding:28px 16px 80px}
+h1{margin:0 0 6px;font-size:clamp(1.8rem,5vw,2.6rem)}
+.sub{color:var(--mut);margin:0 0 22px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:16px}
+.card h2{margin:0 0 4px;font-size:1.1rem}
+.step{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--acc);color:#0b0b10;font-weight:700;margin-right:8px;font-size:.9rem}
+.muted{color:var(--mut);font-size:.9rem}
+#drop{border:2px dashed #3a3a4d;border-radius:14px;padding:26px;text-align:center;cursor:pointer;margin-top:10px;transition:.15s}
+#drop.on,#drop:hover{border-color:var(--acc);background:#1a1a25}
+#drop input{display:none}
+.clip{display:flex;gap:12px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:10px;margin-top:10px;background:#101018}
+.thumb{height:110px;border-radius:8px;flex:none;background:#222}
+.cinfo{flex:1;min-width:0;overflow:hidden}
+.cinfo b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.crow{display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;font-size:.88rem;color:var(--mut)}
+select,input[type=text],input[type=number]{background:#0e0e15;color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:.9rem}
+.cbtns{display:flex;flex-direction:column;gap:4px}
+button{font:inherit;cursor:pointer}
+.mini{background:#22222f;color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:4px 10px}
+.mini:disabled{opacity:.35;cursor:default}
+.bad{color:var(--bad)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:12px}
+.grid label{display:flex;flex-direction:column;gap:4px;font-size:.88rem;color:var(--mut)}
+.grid label.inline{flex-direction:row;align-items:center;gap:8px}
+.colors{display:flex;gap:6px}
+input[type=color]{width:42px;height:32px;padding:0;border:1px solid var(--line);border-radius:6px;background:none}
+input[type=range]{width:100%}
+.big{background:var(--acc);color:#0b0b10;border:0;border-radius:12px;padding:12px 22px;font-weight:700;font-size:1rem}
+.big:disabled{opacity:.4;cursor:default}
+.ghost{background:transparent;color:var(--txt);border:1px solid var(--line);border-radius:12px;padding:12px 22px;font-size:1rem}
+.ghost:disabled{opacity:.4}
+.btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+#status{margin-top:12px;color:var(--acc);min-height:1.4em}
+.progress{height:8px;background:#22222f;border-radius:8px;overflow:hidden;margin-top:10px}
+#bar{height:100%;width:0;background:var(--acc)}
+#canvas{display:block;margin:14px auto 0;max-height:72vh;max-width:100%;aspect-ratio:9/16;background:#000;border-radius:12px}
+#warn{display:none;background:#3b2323;border:1px solid #6a3b3b;border-radius:10px;padding:10px;margin-bottom:14px}
+#result{display:none}
+#resultVideo{display:block;margin:12px auto;max-height:72vh;max-width:100%;border-radius:12px}
+a.dl{display:inline-block;background:var(--ok);color:#06210f;padding:12px 22px;border-radius:12px;font-weight:700;text-decoration:none}
+.lmthumb{height:48px;border-radius:6px;margin:6px 6px 0 0;background:#222}
+details{margin-top:10px;color:var(--mut)}
+footer{color:var(--mut);font-size:.85rem;text-align:center;margin-top:24px}
+a{color:var(--acc)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Cut Out Character Merge</h1>
+  <p class="sub">Upload your <b>black-background</b> character videos. This page puts them into a hand-drawn sketch scene with a moving camera, shadows and an end card. Everything runs in your browser; your videos are never uploaded anywhere.</p>
+
+  <div id="warn">This browser cannot record video from a canvas. Please open this page in the latest <b>Chrome</b> or <b>Edge</b> on a computer.</div>
+
+  <div class="card">
+    <h2><span class="step">1</span>Add your character videos <span id="clipCount" class="muted"></span></h2>
+    <div class="muted">Black background (pure black works best). They play in the order listed; files named 01, 02, 03… are sorted automatically.</div>
+    <label id="drop">
+      <input id="files" type="file" accept="video/*" multiple>
+      <b>Click to choose videos</b> or drop them here
+    </label>
+    <div id="clipList"></div>
+    <details><summary>Checking the black removal</summary>
+      <div class="muted" style="margin-top:6px">Each clip shows a small preview on a grey checkerboard. Your person should look clean with no black patches inside the body. If edges look eaten, lower "Black-removal strength"; if you see dark specks around the person, raise it.</div>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2><span class="step">2</span>Settings <span class="muted">(optional, defaults are good)</span></h2>
+    <div class="grid">
+      <label>Your handle (watermark + end card)<input id="handle" type="text" placeholder="yourname"></label>
+      <label>Quality
+        <select id="quality"><option value="720" selected>720 x 1280 (recommended)</option><option value="540">540 x 960 (faster, weaker laptops)</option><option value="1080">1080 x 1920 (slow)</option></select></label>
+      <label>Black-removal strength: <b id="loVal">18</b><input id="lo" type="range" min="6" max="60" value="18"></label>
+      <label>Intro pan (seconds)<input id="intro" type="number" min="0" max="10" step="0.5" value="1.5"></label>
+      <label>End card (seconds)<input id="outro" type="number" min="0" max="10" step="0.5" value="2"></label>
+      <label>Flag colours (3 stripes)<span class="colors"><input id="f1" type="color" value="#c42624"><input id="f2" type="color" value="#fabe28"><input id="f3" type="color" value="#c42624"></span></label>
+      <label class="inline"><input id="depth" type="checkbox" checked> Put some players far back (camera zooms into them)</label>
+      <label class="inline"><input id="handheld" type="checkbox" checked> Slight handheld camera motion</label>
+      <label class="inline"><input id="props" type="checkbox" checked> Podiums and flags</label>
+      <label class="inline"><input id="protect" type="checkbox" checked> Keep dark clothes/hair solid</label>
+    </div>
+    <details open><summary>Optional: your own landmark pictures and music</summary>
+      <div class="grid">
+        <label>Landmark images (photos or drawings; transparent PNG works best). They are turned into pencil sketches.<input id="lm" type="file" accept="image/*" multiple></label>
+        <label>Background music (mp3/wav)<input id="music" type="file" accept="audio/*"></label>
+      </div>
+      <div id="lmInfo" class="muted"></div><div id="lmThumbs"></div>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2><span class="step">3</span>Make the video</h2>
+    <div class="muted">Making the video records it in real time, so a 30-second video takes about 30 seconds. Keep this tab open and in front while it runs.</div>
+    <div class="btns">
+      <button id="preview" class="ghost">Preview</button>
+      <button id="go" class="big">Make video</button>
+      <button id="stop" class="ghost" style="display:none">Stop</button>
+    </div>
+    <div class="progress"><div id="bar"></div></div>
+    <div class="muted" id="time" style="margin-top:4px"></div>
+    <div id="status"></div>
+    <canvas id="canvas" width="720" height="1280"></canvas>
+  </div>
+
+  <div class="card" id="result">
+    <h2>Your video is ready</h2>
+    <video id="resultVideo" controls playsinline></video>
+    <a id="download" class="dl" href="#">Download video</a>
+  </div>
+
+  <footer>Python / GitHub Actions version also available in this repo - see the README.</footer>
+</div>
+<script>
+/* Cut-Out Character Merge - core engine (no DOM needed except a canvas factory). */
+const Core = (() => {
+  let mk = (w, h) => { const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h)); return c; };
+  const setFactory = (f) => { mk = f; };
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const VW = 720, VH = 1280, HORIZON = 0.56;
+
+  function rng(seed) {
+    let a = seed >>> 0;
+    return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  }
+
+  /* ------------------------------------------------------------- keying */
+  function dilate(src, w, h, r) {
+    const tmp = new Uint8Array(w * h), out = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      let v = 0; const x0 = Math.max(0, x - r), x1 = Math.min(w - 1, x + r);
+      for (let k = x0; k <= x1; k++) if (src[y * w + k]) { v = 1; break; }
+      tmp[y * w + x] = v;
+    }
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      let v = 0; const y0 = Math.max(0, y - r), y1 = Math.min(h - 1, y + r);
+      for (let k = y0; k <= y1; k++) if (tmp[k * w + x]) { v = 1; break; }
+      out[y * w + x] = v;
+    }
+    return out;
+  }
+  function erode(src, w, h, r) {
+    const inv = new Uint8Array(w * h);
+    for (let i = 0; i < inv.length; i++) inv[i] = src[i] ? 0 : 1;
+    const d = dilate(inv, w, h, r);
+    for (let i = 0; i < d.length; i++) d[i] = d[i] ? 0 : 1;
+    return d;
+  }
+
+  /** Turn black-background pixels into transparency (in place). */
+  function keyImageData(id, lo, hi, protect) {
+    const w = id.width, h = id.height, d = id.data, n = w * h;
+    const lumaA = new Uint8Array(n), mx = new Uint8Array(n);
+    const span = Math.max(hi - lo, 1);
+    for (let i = 0, p = 0; i < n; i++, p += 4) {
+      const r = d[p], g = d[p + 1], b = d[p + 2];
+      const m = r > g ? (r > b ? r : b) : (g > b ? g : b);
+      mx[i] = m;
+      let t = (m - lo) / span; t = t < 0 ? 0 : t > 1 ? 1 : t;
+      lumaA[i] = (t * t * (3 - 2 * t)) * 255;
+    }
+    const alpha = Uint8Array.from(lumaA);
+    if (protect) {
+      const m = new Uint8Array(n);
+      for (let i = 0; i < n; i++) m[i] = mx[i] > lo + 6 ? 1 : 0;
+      const dil = dilate(m, w, h, 2);
+      const vis = new Uint8Array(n), stack = new Int32Array(n);
+      let sp = 0;
+      const push = (i) => { if (!vis[i] && !dil[i]) { vis[i] = 1; stack[sp++] = i; } };
+      for (let x = 0; x < w; x++) { push(x); push((h - 1) * w + x); }
+      for (let y = 0; y < h; y++) { push(y * w); push(y * w + w - 1); }
+      while (sp > 0) {
+        const i = stack[--sp], x = i % w, y = (i / w) | 0;
+        if (x > 0) push(i - 1); if (x < w - 1) push(i + 1);
+        if (y > 0) push(i - w); if (y < h - 1) push(i + w);
+      }
+      const subj = new Uint8Array(n);
+      for (let i = 0; i < n; i++) subj[i] = vis[i] ? 0 : 1;
+      const er = erode(subj, w, h, 2);
+      for (let i = 0; i < n; i++) if (er[i] && alpha[i] < 255) alpha[i] = 255;
+    }
+    for (let i = 0, p = 0; i < n; i++, p += 4) {
+      const a = alpha[i], la = lumaA[i];
+      if (a === la && a > 0 && a < 250) { // un-multiply soft edges so no dark fringe
+        const f = 255 / Math.max(a, 20);
+        d[p] = Math.min(255, d[p] * f); d[p + 1] = Math.min(255, d[p + 1] * f); d[p + 2] = Math.min(255, d[p + 2] * f);
+      }
+      d[p + 3] = a;
+    }
+    return id;
+  }
+
+  /** Bounding box of anything brighter than the black background. */
+  function bboxOf(id, lo) {
+    const w = id.width, h = id.height, d = id.data;
+    const cols = new Uint16Array(w), rows = new Uint16Array(h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const p = (y * w + x) * 4;
+      if (Math.max(d[p], d[p + 1], d[p + 2]) > lo + 6) { cols[x]++; rows[y]++; }
+    }
+    const first = (arr) => { for (let i = 0; i < arr.length; i++) if (arr[i] >= 3) return i; return -1; };
+    const last = (arr) => { for (let i = arr.length - 1; i >= 0; i--) if (arr[i] >= 3) return i; return -1; };
+    const x0 = first(cols), x1 = last(cols), y0 = first(rows), y1 = last(rows);
+    if (x0 < 0 || y0 < 0) return null;
+    return { x0, y0, x1, y1 };
+  }
+
+  /* ------------------------------------------------------------- pencil drawing */
+  const INK = 'rgba(55,55,62,0.85)';
+  function wob(g, pts, R, jit = 1.4, close = false) {
+    g.beginPath();
+    const P = close ? pts.concat([pts[0]]) : pts;
+    g.moveTo(P[0][0], P[0][1]);
+    for (let i = 1; i < P.length; i++) {
+      const [x0, y0] = P[i - 1], [x1, y1] = P[i];
+      const n = Math.max(2, Math.round(Math.hypot(x1 - x0, y1 - y0) / 14));
+      for (let k = 1; k <= n; k++) {
+        const t = k / n, edge = k === n;
+        g.lineTo(lerp(x0, x1, t) + (edge ? 0 : (R() - 0.5) * 2 * jit), lerp(y0, y1, t) + (edge ? 0 : (R() - 0.5) * 2 * jit));
+      }
+    }
+    g.stroke();
+  }
+  function archPts(x0, x1, yBot, ySpring, steps = 14) {
+    const cx = (x0 + x1) / 2, rr = (x1 - x0) / 2, pts = [[x0, yBot]];
+    for (let i = 0; i <= steps; i++) { const a = Math.PI - Math.PI * i / steps; pts.push([cx + rr * Math.cos(a), ySpring - rr * Math.sin(a)]); }
+    pts.push([x1, yBot]); return pts;
+  }
+  function polyPath(g, pts) { g.beginPath(); g.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]); g.closePath(); }
+
+  function sketchBuilding(kind, w, h, seed) {
+    const R = rng(seed), pad = 8;
+    const bodies = [], holes = [], lines = [];
+    const rect = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+    const arch = (x0, x1, yb, ys, carve = true) => { const p = archPts(x0, x1, yb, ys); if (carve) holes.push(p); lines.push(p); };
+    if (kind === 'aqueduct') {
+      bodies.push(rect(0, 0.35 * h, w, h)); lines.push([[0, 0.35 * h], [w, 0.35 * h]], [[0, h - 2], [w, h - 2]]);
+      for (let t = 0; t < 2; t++) {
+        const yb = h - t * (0.65 * h / 2), yt = yb - 0.65 * h / 2, n = t === 0 ? 10 : 14, aw = w / n;
+        for (let i = 0; i < n; i++) { const x0 = i * aw + aw * 0.14, x1 = (i + 1) * aw - aw * 0.14; arch(x0, x1, yb - 2, yt + (x1 - x0) / 2 + 10); }
+        lines.push([[0, yt], [w, yt]]);
+      }
+    } else if (kind === 'gate') {
+      bodies.push(rect(0, 0.2 * h, w, h), rect(0.25 * w, 0, 0.75 * w, 0.2 * h));
+      lines.push(rect(0, 0.2 * h, w, h).concat([[0, 0.2 * h]]), [[0.25 * w, 0.2 * h], [0.25 * w, 0], [0.75 * w, 0], [0.75 * w, 0.2 * h]], [[0, 0.32 * h], [w, 0.32 * h]]);
+      for (const fx of [0.12, 0.42, 0.72]) arch(fx * w, (fx + 0.16) * w, h - 3, 0.58 * h);
+      for (let i = 0; i < 7; i++) { const x = (0.3 + i * 0.065) * w; lines.push([[x, 2], [x + 6, 16], [x - 6, 16], [x, 2]]); }
+    } else if (kind === 'tower') {
+      const segs = [[0.18 * h, 0.52 * h, 0.62], [0.52 * h, 0.78 * h, 0.8], [0.78 * h, h, 1.0]];
+      for (const [ys, ye, rw] of segs) {
+        const bw = w * rw, x0 = (w - bw) / 2;
+        bodies.push(rect(x0, ys, x0 + bw, ye));
+        lines.push([[x0, ys], [x0, ye]], [[x0 + bw, ys], [x0 + bw, ye]], [[x0 - 4, ye], [x0 + bw + 4, ye]]);
+        for (const fx of [0.3, 0.7]) { const xw = w * fx; arch(xw - 9, xw + 9, ys + (ye - ys) * 0.7, ys + (ye - ys) * 0.4 + 9, false); }
+      }
+      const tw = w * 0.62, tx = (w - tw) / 2, cr = 0.08 * h;
+      for (let i = 0; i < 7; i++) { const cx0 = tx + i * tw / 7, cw = tw / 7 * 0.55; bodies.push(rect(cx0, 0.18 * h - cr, cx0 + cw, 0.18 * h)); lines.push([[cx0, 0.18 * h], [cx0, 0.18 * h - cr], [cx0 + cw, 0.18 * h - cr], [cx0 + cw, 0.18 * h]]); }
+    } else { // cathedral
+      const n = 4;
+      for (let i = 0; i < n; i++) {
+        const tw = w / (n + 0.5), x0 = i * (w - tw) / (n - 1), top = h * (0.1 * R() + ((i === 1 || i === 2) ? 0 : 0.18));
+        const pts = [[x0, h], [x0, top + (h - top) * 0.5], [x0 + tw * 0.38, top + 10], [x0 + tw * 0.5, top], [x0 + tw * 0.62, top + 10], [x0 + tw, top + (h - top) * 0.5], [x0 + tw, h]];
+        bodies.push(pts); lines.push(pts);
+        for (let k = 1; k < 8; k++) { const yy = top + (h - top) * k / 8.5; for (let j = 0; j < 3; j++) { const xx = x0 + tw * (0.22 + 0.28 * j); lines.push([[xx, yy], [xx, yy + (h - top) / 14]]); } }
+        lines.push([[x0, top + (h - top) * 0.5], [x0 + tw, top + (h - top) * 0.5]]);
+      }
+      bodies.push(rect(0, 0.55 * h, w, h)); lines.push([[0, 0.55 * h], [w, 0.55 * h]]);
+    }
+    const c = mk(w + pad * 2, h + pad * 2), g = c.getContext('2d');
+    g.translate(pad, pad);
+    const grad = g.createLinearGradient(0, 0, 0, h); grad.addColorStop(0, '#f3f1ea'); grad.addColorStop(1, '#d8d5cd');
+    g.fillStyle = grad; for (const b of bodies) { polyPath(g, b); g.fill(); }
+    g.globalCompositeOperation = 'source-atop';
+    for (let i = 0; i < 18; i++) { const x = R() * w, y = R() * h, r = 30 + R() * 90, rg = g.createRadialGradient(x, y, 0, x, y, r); rg.addColorStop(0, 'rgba(120,120,125,0.10)'); rg.addColorStop(1, 'rgba(120,120,125,0)'); g.fillStyle = rg; g.fillRect(x - r, y - r, r * 2, r * 2); }
+    g.strokeStyle = 'rgba(70,70,76,0.35)'; g.lineWidth = 1;
+    const cnt = Math.round(w * h / 190);
+    g.beginPath();
+    for (let i = 0; i < cnt; i++) { const x = R() * w, y = R() * h, l = 8 + R() * 14; g.moveTo(x, y); g.lineTo(x + Math.cos(-1.05) * l, y + Math.sin(-1.05) * l); }
+    g.stroke();
+    g.globalCompositeOperation = 'destination-out'; g.fillStyle = '#000';
+    for (const p of holes) { polyPath(g, p); g.fill(); }
+    g.globalCompositeOperation = 'source-over';
+    g.strokeStyle = INK; g.lineWidth = 2.2; g.lineJoin = 'round'; g.lineCap = 'round';
+    for (const l of lines) wob(g, l, R, 1.5);
+    return c;
+  }
+  const KINDS = { aqueduct: 3.2, gate: 1.8, tower: 0.78, cathedral: 0.9 };
+
+  /* ------------------------------------------------------------- landmark photo -> pencil sketch */
+  function sketchify(srcCanvas, maxSide = 900) {
+    const sc = Math.min(1, maxSide / Math.max(srcCanvas.width, srcCanvas.height));
+    const w = Math.max(2, Math.round(srcCanvas.width * sc)), h = Math.max(2, Math.round(srcCanvas.height * sc));
+    const c = mk(w, h), g = c.getContext('2d'); g.drawImage(srcCanvas, 0, 0, w, h);
+    const id = g.getImageData(0, 0, w, h), d = id.data, n = w * h;
+    const gray = new Float32Array(n); let hasAlpha = false;
+    for (let i = 0; i < n; i++) { gray[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2]; if (d[i * 4 + 3] < 250) hasAlpha = true; }
+    // box-blur the inverted image (3 passes ~ gaussian)
+    let b = new Float32Array(n); for (let i = 0; i < n; i++) b[i] = 255 - gray[i];
+    const box = (src, r) => {
+      const t = new Float32Array(n), o = new Float32Array(n);
+      for (let y = 0; y < h; y++) { let s = 0, cnt = 0; for (let x = -r; x < w; x++) { const a = x + r, rm = x - r - 1; if (a < w) { s += src[y * w + a]; cnt++; } if (rm >= 0) { s -= src[y * w + rm]; cnt--; } if (x >= 0) t[y * w + x] = s / cnt; } }
+      for (let x = 0; x < w; x++) { let s = 0, cnt = 0; for (let y = -r; y < h; y++) { const a = y + r, rm = y - r - 1; if (a < h) { s += t[a * w + x]; cnt++; } if (rm >= 0) { s -= t[rm * w + x]; cnt--; } if (y >= 0) o[y * w + x] = s / cnt; } }
+      return o;
+    };
+    for (let k = 0; k < 3; k++) b = box(b, 2);
+    let mask = new Uint8Array(n);
+    if (hasAlpha) { for (let i = 0; i < n; i++) mask[i] = d[i * 4 + 3]; }
+    else {
+      const cand = new Uint8Array(n);
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const i = y * w + x, p = i * 4;
+        const xl = x > 0 ? i - 1 : i, xr = x < w - 1 ? i + 1 : i, yu = y > 0 ? i - w : i, yd = y < h - 1 ? i + w : i;
+        const gr = Math.abs(gray[xr] - gray[xl]) + Math.abs(gray[yd] - gray[yu]);
+        cand[i] = (gray[i] > 110 && d[p + 2] >= d[p] - 6 && gr < 14) ? 1 : 0;
+      }
+      const vis = new Uint8Array(n), st = new Int32Array(n); let sp = 0;
+      const push = (i) => { if (!vis[i] && cand[i]) { vis[i] = 1; st[sp++] = i; } };
+      for (let x = 0; x < w; x++) push(x);
+      for (let y = 0; y < h; y++) { push(y * w); push(y * w + w - 1); }
+      while (sp > 0) { const i = st[--sp], x = i % w, y = (i / w) | 0; if (x > 0) push(i - 1); if (x < w - 1) push(i + 1); if (y > 0) push(i - w); if (y < h - 1) push(i + w); }
+      const sky = dilate(vis, w, h, 2);
+      for (let i = 0; i < n; i++) mask[i] = sky[i] ? 0 : 255;
+    }
+    for (let i = 0; i < n; i++) {
+      const dodge = Math.min(255, gray[i] * 256 / (255 - b[i] + 1));
+      const ln = clamp(255 - (255 - dodge) * 1.6, 0, 255) / 255;
+      const f = 0.30 + 0.70 * ln;
+      d[i * 4] = 236 * f; d[i * 4 + 1] = 232 * f; d[i * 4 + 2] = 228 * f; d[i * 4 + 3] = mask[i];
+    }
+    g.putImageData(id, 0, 0);
+    return c;
+  }
+
+  /* ------------------------------------------------------------- scene */
+  function makeSky(w, h, R) {
+    const c = mk(w, h), g = c.getContext('2d');
+    const gr = g.createLinearGradient(0, 0, 0, h);
+    gr.addColorStop(0, '#8ab6e4'); gr.addColorStop(0.5, '#b8d3ec'); gr.addColorStop(0.62, '#d6e6f2'); gr.addColorStop(1, '#d6e6f2');
+    g.fillStyle = gr; g.fillRect(0, 0, w, h);
+    const blob = (x, y, r, col, a) => { const rg = g.createRadialGradient(x, y, 0, x, y, r); rg.addColorStop(0, `rgba(${col},${a})`); rg.addColorStop(1, `rgba(${col},0)`); g.fillStyle = rg; g.fillRect(x - r, y - r, r * 2, r * 2); };
+    for (let i = 0; i < Math.round(w / 40); i++) blob(R() * w, R() * h, 80 + R() * 260, R() < 0.5 ? '255,255,255' : '90,140,205', 0.05 + R() * 0.08);
+    for (let i = 0; i < Math.round(w / 500); i++) { g.save(); g.translate(R() * w, R() * h * 0.5); g.scale(2.6 + R() * 2, 1); blob(0, 0, 90 + R() * 60, '255,255,255', 0.38); g.restore(); }
+    return c;
+  }
+
+  function makeGround(w, h, horizonPx, R, ss) {
+    const c = mk(w, h), g = c.getContext('2d');
+    const gr = g.createLinearGradient(0, horizonPx - 4 * ss, 0, h);
+    gr.addColorStop(0, 'rgba(150,200,100,0)'); gr.addColorStop(6 * ss / (h - horizonPx), 'rgb(146,200,96)'); gr.addColorStop(1, 'rgb(92,166,50)');
+    g.fillStyle = gr; g.fillRect(0, horizonPx - 4 * ss, w, h - horizonPx + 4 * ss);
+    g.save(); g.beginPath(); g.rect(0, horizonPx, w, h - horizonPx); g.clip();
+    for (let x = 0; x < w; x += 140 * ss) { g.fillStyle = 'rgba(255,255,255,0.045)'; g.fillRect(x, horizonPx, 70 * ss, h - horizonPx); }
+    for (let i = 0; i < Math.round(w / 30); i++) {
+      const x = R() * w, y = horizonPx + R() * (h - horizonPx), r = (50 + R() * 200) * ss, dark = R() < 0.5;
+      const rg = g.createRadialGradient(x, y, 0, x, y, r); rg.addColorStop(0, dark ? 'rgba(40,110,30,0.13)' : 'rgba(210,240,140,0.13)'); rg.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = rg; g.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+    // chalk lines
+    const chalk = (pts, wd) => {
+      for (const [lw, al] of [[wd, 0.85], [wd * 0.55, 0.6]]) {
+        g.strokeStyle = `rgba(250,250,245,${al})`; g.lineWidth = lw; g.lineCap = 'round'; g.lineJoin = 'round';
+        wob(g, pts.map(p => [p[0] + (R() - 0.5) * 2, p[1] + (R() - 0.5) * 2]), R, 1.8);
+      }
+    };
+    const H = h / ss, cy = horizonPx + 0.2 * h;
+    for (let cx = 0.25 * w; cx < w; cx += w / 3.2) {
+      const pts = []; for (let a = 0; a <= 2 * Math.PI + 0.01; a += 2 * Math.PI / 60) pts.push([cx + 330 * ss * Math.cos(a), cy + 120 * ss * Math.sin(a)]);
+      chalk(pts, 12 * ss); chalk([[cx, cy - 120 * ss], [cx, h]], 12 * ss);
+    }
+    chalk([[0, horizonPx + 0.07 * h], [w, horizonPx + 0.075 * h]], 9 * ss);
+    g.restore();
+    return c;
+  }
+
+  function makePodium(w, h, R) {
+    const c = mk(w, h), g = c.getContext('2d');
+    const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#f3a228'); gr.addColorStop(1, '#e48a1e');
+    g.fillStyle = gr; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 14; i++) { const x = R() * w, y = R() * h, r = 20 + R() * 60, rg = g.createRadialGradient(x, y, 0, x, y, r); rg.addColorStop(0, R() < 0.5 ? 'rgba(255,220,120,0.25)' : 'rgba(190,90,10,0.2)'); rg.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = rg; g.fillRect(x - r, y - r, r * 2, r * 2); }
+    const bh = Math.max(8, h / 6); g.fillStyle = '#e2461e'; g.fillRect(0, h - bh, w, bh);
+    const s = Math.min(w, h) * 0.45, cx = w * 0.12 + s / 2, cy = h * 0.3 + s / 2; g.beginPath();
+    for (let i = 0; i < 10; i++) { const r = s * (i % 2 === 0 ? 0.48 : 0.2), a = -Math.PI / 2 + i * Math.PI / 5; g.lineTo(cx + r * Math.cos(a), cy + r * Math.sin(a)); }
+    g.closePath(); g.fillStyle = '#fac846'; g.fill(); g.strokeStyle = '#28324f'; g.lineWidth = 2.5; g.stroke();
+    g.strokeStyle = 'rgba(40,40,50,0.7)'; g.lineWidth = 3; g.strokeRect(1.5, 1.5, w - 3, h - 3);
+    return c;
+  }
+
+  function makeFlag(w, h, colors) {
+    const c = mk(w, h), g = c.getContext('2d'), pw = Math.max(4, w / 22), fh = h * 0.38, fw = w - pw;
+    g.fillStyle = '#9a9a9a'; g.fillRect(0, 0, pw, h);
+    g.save(); g.beginPath();
+    const wave = (x) => 7 * Math.sin((x / fw) * 6.2);
+    g.moveTo(pw, wave(0)); for (let x = 0; x <= fw; x += 4) g.lineTo(pw + x, wave(x));
+    for (let x = fw; x >= 0; x -= 4) g.lineTo(pw + x, fh + wave(x));
+    g.closePath(); g.clip();
+    const ratios = [1, 2, 1], tot = 4; let y = -10;
+    colors.forEach((col, i) => { const hh = (fh + 20) * ratios[i] / tot; g.fillStyle = col; g.fillRect(pw, y, fw, hh + 1); y += hh; });
+    for (let i = 0; i < 8; i++) { const x = pw + Math.random() * fw, yy = Math.random() * fh, r = 25 + Math.random() * 40, rg = g.createRadialGradient(x, yy, 0, x, yy, r); rg.addColorStop(0, 'rgba(0,0,0,0.10)'); rg.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = rg; g.fillRect(x - r, yy - r, r * 2, r * 2); }
+    g.restore();
+    return c;
+  }
+
+  /** opts: {W,H,screens,ss,seed,flagColors,props,landmarks:[canvas]} */
+  function buildScene(o) {
+    const W = o.W || VW, H = o.H || VH, screens = o.screens || 4, ss = o.ss || 1.3, seed = o.seed || 7;
+    const Ws = W * screens, R = rng(seed);
+    const layerWidth = (p) => W + p * (Ws - W);
+    const layers = [];
+    const skyP = 0.2, skyW = Math.round(layerWidth(skyP) * 1.15 * ss), skyH = Math.round(H * 1.6 * ss);
+    layers.push({ canvas: makeSky(skyW, skyH, R), parallax: skyP, zw: 0.25, opaque: true, oy: -0.3 * H });
+
+    const mkLayer = (p) => { const c = mk(layerWidth(p) * ss, H * ss); return c; };
+    const farP = 0.45, nearP = 0.7, far = mkLayer(farP), near = mkLayer(nearP);
+    const place = (canvas, img, relX, baseY, hFrac, lw, aspect) => {
+      const ph = hFrac * H * ss, pw = ph * (aspect || img.width / img.height);
+      canvas.getContext('2d').drawImage(img, relX * lw * ss - pw / 2, baseY * H * ss - ph, pw, ph);
+    };
+    const kindsList = Object.keys(KINDS), hMap = { aqueduct: 0.22, gate: 0.26, tower: 0.40, cathedral: 0.52 };
+    const nFar = Math.max(3, Math.floor(screens * 1.4)), nNear = Math.max(2, Math.floor(screens * 0.8));
+    const lms = o.landmarks || [];
+    for (let i = 0; i < nFar; i++) {
+      const x = (i + 0.5) / nFar;
+      if (lms.length && i % 2 === 0) { const img = lms[(i / 2 | 0) % lms.length]; place(far, img, x, HORIZON + 0.02, 0.42, layerWidth(farP)); }
+      else { const k = kindsList[i % 4], ph = 700; place(far, sketchBuilding(k, Math.round(ph * KINDS[k]), ph, Math.floor(R() * 9999)), x, HORIZON + 0.02, hMap[k], layerWidth(farP)); }
+    }
+    for (let i = 0; i < nNear; i++) {
+      const x = Math.min((i + 0.3 + 0.4 * (i % 2)) / nNear, 0.97), k = ['tower', 'cathedral', 'gate', 'aqueduct'][(i + 1) % 4], ph = 700;
+      place(near, sketchBuilding(k, Math.round(ph * KINDS[k]), ph, Math.floor(R() * 9999)), x, HORIZON + 0.02, hMap[k] * 0.8, layerWidth(nearP));
+    }
+    layers.push({ canvas: far, parallax: farP, zw: 0.55, oy: 0 });
+    layers.push({ canvas: near, parallax: nearP, zw: 0.78, oy: 0 });
+
+    const gw = Math.round(Ws * ss), gh = Math.round(H * ss);
+    const ground = makeGround(gw, gh, Math.round(HORIZON * gh), R, ss);
+    if (o.props !== false) {
+      const fc = o.flagColors || ['#c42624', '#fabe28', '#c42624'];
+      const pods = [[0.22, 0.80, 0.13], [0.70, 0.80, 0.13]], flags = [[0.31, 0.80, 0.30], [0.81, 0.80, 0.30]];
+      for (const [x, b, hf] of pods) { const ph = hf * H * ss, pw = ph * 2.4; ground.getContext('2d').drawImage(makePodium(Math.round(pw), Math.round(ph), R), x * gw - pw / 2, b * gh - ph, pw, ph); }
+      for (const [x, b, hf] of flags) { const ph = hf * H * ss, pw = ph * 0.75; ground.getContext('2d').drawImage(makeFlag(Math.round(pw), Math.round(ph), fc), x * gw - pw / 2, b * gh - ph, pw, ph); }
+    }
+    layers.push({ canvas: ground, parallax: 1.0, zw: 1.0, oy: 0 });
+    return { W, H, ss, Ws, screens, horizon: HORIZON, layers, layerWidth };
+  }
+
+  function renderBackground(ctx, scene, cxF, z, cyF, k) {
+    const { W, H, ss, horizon } = scene, cy = cyF * H;
+    const yg = z * (horizon * H - cy) + H / 2;
+    for (const L of scene.layers) {
+      const zl = Math.pow(z, L.zw), cyl = horizon * H - (yg - H / 2) / zl, lw = scene.layerWidth(L.parallax);
+      const cxl = L.opaque ? L.canvas.width / ss / 2 + (cxF - 0.5) * (lw - W) : W / 2 + cxF * (lw - W);
+      const a = k * zl / ss, e = k * (W / 2 - zl * cxl), f = k * (H / 2 - zl * cyl), oy = (L.oy || 0) * ss;
+      ctx.setTransform(a, 0, 0, a, e, f);
+      const cwid = W * k, chei = H * k, cvw = L.canvas.width, cvh = L.canvas.height;
+      const x0 = Math.max(0, Math.floor(-e / a) - 2), x1 = Math.min(cvw, Math.ceil((cwid - e) / a) + 2);
+      const y0 = Math.max(0, Math.floor(-f / a - oy) - 2), y1 = Math.min(cvh, Math.ceil((chei - f) / a - oy) + 2);
+      if (x1 > x0 && y1 > y0) ctx.drawImage(L.canvas, x0, y0, x1 - x0, y1 - y0, x0, y0 + oy, x1 - x0, y1 - y0);
+    }
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+  }
+
+  /* ------------------------------------------------------------- camera */
+  const ease = (u) => { u = clamp(u, 0, 1); return u * u * (3 - 2 * u); };
+  function makeCamera(keys, handheld) {
+    const ks = keys.map(k => Object.assign({ t: 0, x: 0, zoom: 1, y: 0.5 }, k)).sort((a, b) => a.t - b.t);
+    return {
+      at(t) {
+        let x, z, y;
+        if (t <= ks[0].t) ({ x, zoom: z, y } = ks[0]);
+        else if (t >= ks[ks.length - 1].t) ({ x, zoom: z, y } = ks[ks.length - 1]);
+        else for (let i = 0; i < ks.length - 1; i++) {
+          const a = ks[i], b = ks[i + 1];
+          if (t >= a.t && t <= b.t) { const u = ease((t - a.t) / Math.max(b.t - a.t, 1e-6)); x = lerp(a.x, b.x, u); y = lerp(a.y, b.y, u); z = Math.exp(lerp(Math.log(a.zoom), Math.log(b.zoom), u)); break; }
+        }
+        if (handheld) { z *= 1 + 0.006 * handheld * Math.sin(t * 1.3); x += 0.004 * handheld * Math.sin(t * 0.9 + 1); y += 0.003 * handheld * Math.sin(t * 1.7); }
+        return [clamp(x, 0, 1), z, y];
+      }
+    };
+  }
+
+  /* ------------------------------------------------------------- auto layout */
+  const DEPTH_MAP = { front: 0, mid: 0.35, back: 0.7 };
+  function autoLayout(clips, o) {
+    const H = o.H || VH, n = clips.length, intro = o.intro, pan = o.pan ?? 0.7, height = o.height ?? 0.62;
+    const zooms = [1.0, 1.14, 1.0, 1.28], depths = [0, 0.55, 0.15, 0.7], offs = [-0.1, 0.1, 0, -0.12, 0.12];
+    const xs = n === 1 ? [0.5] : clips.map((_, i) => i / (n - 1));
+    const keys = [{ t: 0, x: Math.min(1, xs[0] + 0.22), zoom: 1, y: 0.5 }, { t: Math.max(intro, 0.01), x: xs[0], zoom: 1, y: 0.5 }];
+    const chars = []; let t = intro, zPrev = 1;
+    clips.forEach((c, i) => {
+      const dur = c.duration;
+      let d = c.depth && c.depth !== 'auto' ? DEPTH_MAP[c.depth] : (o.depth ? depths[i % 4] : 0);
+      let z, cyf;
+      if (d > 0) { const sc = 1 - 0.72 * d; z = Math.min(3, Math.max(1, 0.95 / sc)); const ys = 0.9 + (0.61 - 0.9) * d; cyf = clamp(ys - height * sc / 2, 0.5 / z, 1 - 0.5 / z); }
+      else { z = zooms[i % 4]; cyf = z > 1 ? Math.max(0.5, Math.min(1 - 0.5 / z, (0.9 * H - (H / 2 - 70) / z) / H)) : 0.5; }
+      const sideOff = c.side === 'left' ? -0.14 : c.side === 'right' ? 0.14 : c.side === 'center' ? 0 : offs[i % 5];
+      chars.push({ index: i, start: t, duration: dur, x: xs[i], offset: sideOff, depth: d, flip: !!c.flip, height });
+      if (i > 0) keys.push({ t, x: xs[i - 1], zoom: zPrev, y: 0.5 });
+      keys.push({ t: t + (i > 0 ? pan : 0.01), x: xs[i], zoom: z, y: cyf });
+      keys.push({ t: t + dur, x: xs[i], zoom: z, y: cyf });
+      zPrev = z; t += dur;
+    });
+    return { chars, keys, end: t, total: t + o.outro };
+  }
+
+  /* ------------------------------------------------------------- frame composition */
+  /** entries: [{start,duration,x,offset,depth,flip,height,provider}] provider.frame(localT) -> keyed canvas w/ .anchorU/.anchorV */
+  function prepareEntries(scene, chars) {
+    const { W, H, Ws } = scene, far = HORIZON + 0.05;
+    return chars.map(c => Object.assign({}, c, { xs: W / 2 + c.x * (Ws - W) + c.offset * W, ys: (0.9 + (far - 0.9) * c.depth) * H, hs: c.height * (1 - 0.72 * c.depth) * H }))
+      .sort((a, b) => b.depth - a.depth);
+  }
+
+  let vigCache = null;
+  function vignette(ctx, w, h) {
+    if (!vigCache || vigCache.w !== w || vigCache.h !== h) {
+      const c = mk(w, h), g = c.getContext('2d'), rg = g.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.35, w / 2, h / 2, Math.hypot(w, h) * 0.55);
+      rg.addColorStop(0, 'rgba(0,0,0,0)'); rg.addColorStop(1, 'rgba(20,20,30,0.28)'); g.fillStyle = rg; g.fillRect(0, 0, w, h); vigCache = { w, h, c };
+    }
+    ctx.drawImage(vigCache.c, 0, 0);
+  }
+
+  function renderFrame(ctx, scene, st, t, k) {
+    const { W, H } = scene, [cxF, z, cyF] = st.camera.at(t), cx = W / 2 + cxF * (scene.Ws - W), cy = cyF * H;
+    renderBackground(ctx, scene, cxF, z, cyF, k);
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    for (const e of st.entries) {
+      const lt = t - e.start; if (lt < 0 || lt >= e.duration) continue;
+      const kc = e.provider.frame(lt); if (!kc) continue;
+      const kw = kc.width, kh = kc.height, sc = e.hs / kh, f = e.flip ? -1 : 1;
+      const au = kc.anchorU, av = kc.anchorV;
+      const sx = k * (z * (e.xs - cx) + W / 2), sy = k * (z * (e.ys - cy) + H / 2), op = st.fade > 0 ? Math.min(1, lt / st.fade) : 1;
+      // shadow (blurry thanks to a tiny intermediate canvas)
+      if (st.shadow !== false) {
+        const tw = Math.max(4, Math.round(kw / 6)), th = Math.max(4, Math.round(kh / 6));
+        if (!e.sh || e.sh.width !== tw || e.sh.height !== th) e.sh = mk(tw, th);
+        const g = e.sh.getContext('2d'); g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, tw, th);
+        g.imageSmoothingEnabled = true; g.drawImage(kc, 0, 0, tw, th); g.globalCompositeOperation = 'source-in'; g.fillStyle = 'rgb(25,55,20)'; g.fillRect(0, 0, tw, th);
+        ctx.save(); ctx.globalAlpha = 0.38 * op;
+        ctx.setTransform(k * z * sc * f, 0, k * z * sc * 0.55 * f, -k * z * sc * 0.16, sx, sy);
+        ctx.drawImage(e.sh, -au, -av, kw, kh); ctx.restore();
+      }
+      ctx.save(); ctx.globalAlpha = op;
+      ctx.setTransform(k * z * sc * f, 0, 0, k * z * sc, sx, sy);
+      ctx.drawImage(kc, -au, -av); ctx.restore();
+    }
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    const cw = W * k, ch = H * k;
+    if (st.vignette !== false) vignette(ctx, cw, ch);
+    if (st.handle) { ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.font = `${Math.round(22 * k)}px sans-serif`; ctx.textAlign = 'right'; ctx.fillText('@' + st.handle, cw - 24 * k, 70 * k); }
+    if (st.outro > 0 && t > st.end) {
+      const u = clamp((t - st.end) / Math.min(st.outro, 0.8), 0, 1);
+      ctx.fillStyle = `rgba(0,0,0,${0.6 * u})`; ctx.fillRect(0, 0, cw, ch);
+      if (st.handle) { ctx.fillStyle = `rgba(255,255,255,${u})`; ctx.font = `bold ${Math.round(46 * k)}px sans-serif`; ctx.textAlign = 'center'; ctx.fillText('@' + st.handle, cw / 2, ch / 2); }
+    }
+  }
+
+  return { setFactory, rng, keyImageData, bboxOf, sketchify, buildScene, renderBackground, makeCamera, autoLayout, prepareEntries, renderFrame, sketchBuilding, VW, VH, HORIZON, clamp };
+})();
+if (typeof module !== 'undefined') module.exports = Core;
+
+</script>
+<script>
+/* Cut-Out Character Merge - browser app (UI, clip loading, preview, recording). */
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const hidden = document.createElement('div');
+  hidden.style.cssText = 'position:fixed;left:-9999px;top:0;width:2px;height:2px;overflow:hidden;opacity:0;pointer-events:none';
+  document.body.appendChild(hidden);
+
+  const clips = [];            // {id,file,url,name,duration,vw,vh,samples,box,depth,side,flip,card}
+  let landmarks = [];          // sketch canvases
+  let sceneCache = null;       // {key, scene}
+  let running = null;          // current run controller
+  let uid = 0;
+
+  const S = () => ({
+    lo: +$('lo').value, protect: $('protect').checked,
+    handle: $('handle').value.trim().replace(/^@/, ''),
+    intro: Math.max(0, +$('intro').value || 0), outro: Math.max(0, +$('outro').value || 0),
+    depth: $('depth').checked, handheld: $('handheld').checked, props: $('props').checked,
+    flag: [$('f1').value, $('f2').value, $('f3').value],
+    quality: $('quality').value,
+  });
+  const outSize = (q) => q === '540' ? [540, 960, 560] : q === '1080' ? [1080, 1920, 900] : [720, 1280, 720];
+
+  /* ---------------------------------------------------------------- helpers */
+  const wait = (ms) => new Promise(r => setTimeout(r, ms));
+  function onceEvent(el, ev, timeout = 4000) {
+    return new Promise((res) => { let done = false; const f = () => { if (done) return; done = true; el.removeEventListener(ev, f); res(); }; el.addEventListener(ev, f); setTimeout(f, timeout); });
+  }
+  async function seek(v, t) { const p = onceEvent(v, 'seeked'); v.currentTime = Math.max(0, Math.min(t, (v.duration || t) - 0.05)); await p; }
+  function makeVideo(url, muted) {
+    const v = document.createElement('video');
+    v.playsInline = true; v.preload = 'auto'; v.muted = muted; v.src = url;
+    hidden.appendChild(v); return v;
+  }
+  const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+
+  /* ---------------------------------------------------------------- clips */
+  async function addFiles(files) {
+    for (const f of files) {
+      if (!f.type.startsWith('video/') && !/\.(mp4|mov|m4v|webm|mkv)$/i.test(f.name)) continue;
+      const c = { id: ++uid, file: f, url: URL.createObjectURL(f), name: f.name, duration: 0, depth: 'auto', side: 'auto', flip: false, samples: [], box: null, ready: false };
+      clips.push(c); renderList();
+      loadClip(c).then(() => renderList()).catch(() => { c.error = true; renderList(); });
+    }
+    clips.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })); renderList();
+  }
+
+  async function loadClip(c) {
+    const v = makeVideo(c.url, true);
+    await onceEvent(v, 'loadedmetadata', 8000);
+    c.duration = v.duration; c.vw = v.videoWidth; c.vh = v.videoHeight;
+    if (!c.vw || !c.duration || !isFinite(c.duration)) throw new Error('unreadable');
+    const sc = Math.min(1, 320 / c.vw), pw = Math.round(c.vw * sc), ph = Math.round(c.vh * sc);
+    const pc = document.createElement('canvas'); pc.width = pw; pc.height = ph; const pg = pc.getContext('2d', { willReadFrequently: true });
+    c.scale = sc; c.samples = [];
+    const N = 10;
+    for (let i = 0; i < N; i++) {
+      await seek(v, c.duration * (0.04 + 0.92 * i / (N - 1)) + 0.001);
+      pg.drawImage(v, 0, 0, pw, ph);
+      c.samples.push({ t: v.currentTime, id: pg.getImageData(0, 0, pw, ph) });
+    }
+    v.remove();
+    computeBox(c); c.ready = true;
+  }
+
+  function computeBox(c) {
+    const lo = S().lo; let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
+    for (const s of c.samples) {
+      const b = Core.bboxOf(s.id, lo); if (!b) continue;
+      x0 = Math.min(x0, b.x0); y0 = Math.min(y0, b.y0); x1 = Math.max(x1, b.x1); y1 = Math.max(y1, b.y1);
+    }
+    const sc = c.scale || 1, pad = 10;
+    if (x1 < 0) { c.box = { x: 0, y: 0, w: c.vw, h: c.vh }; c.noSubject = true; return; }
+    c.noSubject = false;
+    const bx0 = Math.max(0, Math.floor(x0 / sc) - pad), by0 = Math.max(0, Math.floor(y0 / sc) - pad);
+    const bx1 = Math.min(c.vw, Math.ceil((x1 + 1) / sc) + pad), by1 = Math.min(c.vh, Math.ceil((y1 + 1) / sc) + pad);
+    c.box = { x: bx0, y: by0, w: bx1 - bx0, h: by1 - by0, pad };
+  }
+
+  /** A provider the renderer calls each frame to get the keyed character canvas. */
+  function makeProvider(c, video, settings, keyMaxH) {
+    const b = c.box, kh = Math.min(b.h, keyMaxH), kw = Math.max(2, Math.round(b.w * kh / b.h));
+    const src = document.createElement('canvas'); src.width = kw; src.height = kh;
+    const sg = src.getContext('2d', { willReadFrequently: true });
+    const out = document.createElement('canvas'); out.width = kw; out.height = kh; const og = out.getContext('2d');
+    out.anchorU = kw / 2; out.anchorV = kh - (b.pad || 10) * kh / b.h;
+    let last = -1, has = false;
+    return {
+      frame() {
+        if (video.readyState >= 2 && video.currentTime !== last) {
+          last = video.currentTime;
+          sg.drawImage(video, b.x, b.y, b.w, b.h, 0, 0, kw, kh);
+          const id = sg.getImageData(0, 0, kw, kh);
+          Core.keyImageData(id, settings.lo, settings.lo + 42, settings.protect);
+          og.putImageData(id, 0, 0); has = true;
+        }
+        return has ? out : null;
+      }
+    };
+  }
+
+  /** Small keyed preview on a checkerboard so the user can verify the black removal. */
+  async function drawKeyThumb(c, canvas) {
+    if (!c.ready) return;
+    const s = c.samples[Math.min(c.samples.length - 1, 4)], sc = c.scale, b = c.box;
+    const sx = Math.floor(b.x * sc), sy = Math.floor(b.y * sc), sw = Math.max(2, Math.floor(b.w * sc)), sh = Math.max(2, Math.floor(b.h * sc));
+    const tmp = document.createElement('canvas'); tmp.width = s.id.width; tmp.height = s.id.height;
+    const tg = tmp.getContext('2d'); const copy = new ImageData(new Uint8ClampedArray(s.id.data), s.id.width, s.id.height);
+    const st = S(); Core.keyImageData(copy, st.lo, st.lo + 42, st.protect); tg.putImageData(copy, 0, 0);
+    const H = 110, W = Math.max(30, Math.round(H * sw / sh)); canvas.width = W; canvas.height = H;
+    const g = canvas.getContext('2d');
+    for (let y = 0; y < H; y += 10) for (let x = 0; x < W; x += 10) { g.fillStyle = ((x + y) / 10) % 2 ? '#6b6f78' : '#8a8f99'; g.fillRect(x, y, 10, 10); }
+    g.drawImage(tmp, sx, sy, sw, sh, 0, 0, W, H);
+  }
+
+  function renderList() {
+    const box = $('clipList'); box.innerHTML = '';
+    $('clipCount').textContent = clips.length ? `${clips.length} clip${clips.length > 1 ? 's' : ''}` : '';
+    clips.forEach((c, i) => {
+      const d = document.createElement('div'); d.className = 'clip';
+      const cv = document.createElement('canvas'); cv.className = 'thumb';
+      d.appendChild(cv);
+      const info = document.createElement('div'); info.className = 'cinfo';
+      const status = c.error ? '<span class="bad">Could not read this video</span>' : !c.ready ? 'Reading…' : c.noSubject ? '<span class="bad">Nothing found. Is the background really black? Lower the black-removal strength.</span>' : fmt(c.duration);
+      info.innerHTML = `<b>${i + 1}. ${c.name.replace(/</g, '&lt;')}</b><div class="muted">${status}</div>`;
+      const row = document.createElement('div'); row.className = 'crow';
+      const sel = (label, key, opts) => { const l = document.createElement('label'); l.textContent = label + ' '; const s = document.createElement('select'); opts.forEach(([v, t]) => { const o = document.createElement('option'); o.value = v; o.textContent = t; if (c[key] === v) o.selected = true; s.appendChild(o); }); s.onchange = () => { c[key] = s.value; }; l.appendChild(s); return l; };
+      row.appendChild(sel('Depth', 'depth', [['auto', 'Auto'], ['front', 'Front'], ['mid', 'Middle'], ['back', 'Back']]));
+      row.appendChild(sel('Side', 'side', [['auto', 'Auto'], ['left', 'Left'], ['center', 'Center'], ['right', 'Right']]));
+      const fl = document.createElement('label'); const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = c.flip; cb.onchange = () => { c.flip = cb.checked; }; fl.appendChild(cb); fl.appendChild(document.createTextNode(' Mirror')); row.appendChild(fl);
+      info.appendChild(row); d.appendChild(info);
+      const btns = document.createElement('div'); btns.className = 'cbtns';
+      const mkb = (t, fn, dis) => { const b = document.createElement('button'); b.textContent = t; b.className = 'mini'; b.disabled = !!dis; b.onclick = fn; return b; };
+      btns.appendChild(mkb('▲', () => { [clips[i - 1], clips[i]] = [clips[i], clips[i - 1]]; renderList(); }, i === 0));
+      btns.appendChild(mkb('▼', () => { [clips[i + 1], clips[i]] = [clips[i], clips[i + 1]]; renderList(); }, i === clips.length - 1));
+      btns.appendChild(mkb('✕', () => { URL.revokeObjectURL(c.url); clips.splice(i, 1); renderList(); }));
+      d.appendChild(btns); box.appendChild(d);
+      drawKeyThumb(c, cv);
+    });
+    $('go').disabled = !clips.length || !!running;
+    $('preview').disabled = !clips.length || !!running;
+  }
+
+  /* ---------------------------------------------------------------- landmarks */
+  async function addLandmarks(files) {
+    for (const f of files) {
+      if (!f.type.startsWith('image/')) continue;
+      const img = new Image(); img.src = URL.createObjectURL(f); await img.decode().catch(() => { });
+      if (!img.width) continue;
+      const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; c.getContext('2d').drawImage(img, 0, 0);
+      landmarks.push(Core.sketchify(c));
+    }
+    sceneCache = null; $('lmInfo').textContent = landmarks.length ? `${landmarks.length} landmark image(s) added (sketched automatically)` : '';
+    const box = $('lmThumbs'); box.innerHTML = ''; landmarks.forEach(l => { const t = document.createElement('canvas'); t.width = 60; t.height = Math.round(60 * l.height / l.width); t.getContext('2d').drawImage(l, 0, 0, t.width, t.height); t.className = 'lmthumb'; box.appendChild(t); });
+  }
+
+  async function getScene(st) {
+    const key = JSON.stringify([st.flag, st.props, landmarks.length, st.quality === '540' ? 1.0 : 1.3]);
+    if (sceneCache && sceneCache.key === key) return sceneCache.scene;
+    setStatus('Building the sketch scene… (a few seconds)'); await wait(30);
+    const scene = Core.buildScene({ W: 720, H: 1280, screens: Math.max(3, Math.min(clips.length + 1, 7)), ss: st.quality === '540' ? 1.0 : 1.3, seed: 7, flagColors: st.flag, props: st.props, landmarks });
+    sceneCache = { key, scene }; return scene;
+  }
+
+  /* ---------------------------------------------------------------- run (preview or record) */
+  function setStatus(t) { $('status').textContent = t; }
+  function setBusy(b) { $('go').disabled = b || !clips.length; $('preview').disabled = b || !clips.length; $('stop').style.display = b ? '' : 'none'; }
+
+  async function run(record) {
+    if (running) return;
+    const st = S();
+    if (clips.some(c => !c.ready)) { setStatus('Wait until all clips show their duration, then try again.'); return; }
+    const bad = clips.find(c => c.noSubject); if (bad) { setStatus(`"${bad.name}": nothing found - is the background pure black? Lower the black-removal strength.`); return; }
+    const ctl = { cancel: false }; running = ctl; setBusy(true); $('result').style.display = 'none';
+    const cleanup = [];
+    try {
+      const [OW, OH, keyH] = outSize(st.quality), k = OW / 720;
+      const scene = await getScene(st);
+      const lay = Core.autoLayout(clips.map(c => ({ duration: c.duration, depth: c.depth, side: c.side, flip: c.flip })), { intro: st.intro, outro: st.outro, depth: st.depth, height: 0.62, H: 1280 });
+      setStatus('Loading clips…');
+      const vids = [];
+      for (const c of clips) { const v = makeVideo(c.url, !record); vids.push(v); cleanup.push(() => { v.pause(); v.remove(); }); }
+      await Promise.all(vids.map(v => v.readyState >= 3 ? 0 : onceEvent(v, 'canplay', 10000)));
+      for (const v of vids) await seek(v, 0);
+      const entries = Core.prepareEntries(scene, lay.chars.map(ch => Object.assign({}, ch, { provider: makeProvider(clips[ch.index], vids[ch.index], st, keyH) })));
+      entries.forEach(e => { e.video = vids[e.index]; });
+      const state = { camera: Core.makeCamera(lay.keys, st.handheld ? 1 : 0), entries, handle: st.handle, outro: st.outro, end: lay.end, fade: 0.12 };
+      const cv = $('canvas'); cv.width = OW; cv.height = OH; const ctx = cv.getContext('2d');
+      Core.renderFrame(ctx, scene, state, 0, k);
+
+      let recorder = null, chunks = [], mime = '', actx = null, music = null;
+      if (record) {
+        const stream = cv.captureStream(30);
+        try {
+          actx = new (window.AudioContext || window.webkitAudioContext)(); await actx.resume();
+          const dest = actx.createMediaStreamDestination();
+          vids.forEach(v => { try { actx.createMediaElementSource(v).connect(dest); } catch (e) { } });
+          const mf = $('music').files[0];
+          if (mf) { music = new Audio(URL.createObjectURL(mf)); music.loop = true; const g = actx.createGain(); g.gain.value = 0.6; actx.createMediaElementSource(music).connect(g); g.connect(dest); }
+          dest.stream.getAudioTracks().forEach(t => stream.addTrack(t));
+          cleanup.push(() => actx.close().catch(() => { }));
+        } catch (e) { console.warn('audio setup failed', e); }
+        const mimes = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+        mime = mimes.find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m));
+        if (!mime) throw new Error('This browser cannot record video. Please use Chrome or Edge.');
+        recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: OW >= 1080 ? 12e6 : 8e6 });
+        recorder.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+        recorder.start(1000);
+      }
+      let wake = null; try { wake = await navigator.wakeLock?.request('screen'); } catch (e) { }
+      cleanup.push(() => { try { wake && wake.release(); } catch (e) { } });
+
+      setStatus(record ? 'Recording… keep this tab open and visible until it finishes.' : 'Previewing…');
+      if (music) music.play().catch(() => { });
+      const t0 = performance.now() + 250;
+      await new Promise((resolve) => {
+        const tick = () => {
+          if (ctl.cancel) return resolve();
+          const t = Math.max(0, (performance.now() - t0) / 1000);
+          for (const e of entries) {
+            if (!e.started && t >= e.start) { e.started = true; e.video.play().catch(() => { }); }
+            if (e.started && !e.stopped && t >= e.start + e.duration) { e.stopped = true; e.video.pause(); }
+          }
+          Core.renderFrame(ctx, scene, state, Math.min(t, lay.total), k);
+          $('bar').style.width = Math.min(100, t / lay.total * 100) + '%';
+          $('time').textContent = `${fmt(Math.min(t, lay.total))} / ${fmt(lay.total)}`;
+          if (t >= lay.total + 0.15) return resolve();
+          requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      });
+      if (music) music.pause();
+      if (record && recorder) {
+        await new Promise((res) => { recorder.onstop = res; recorder.stop(); });
+        if (!ctl.cancel) {
+          const blob = new Blob(chunks, { type: mime.split(';')[0] });
+          const url = URL.createObjectURL(blob), ext = mime.includes('mp4') ? 'mp4' : 'webm';
+          const rv = $('resultVideo'); rv.src = url; const dl = $('download'); dl.href = url; dl.download = `merged-video.${ext}`; dl.textContent = `Download video (.${ext})`;
+          $('result').style.display = ''; $('result').scrollIntoView({ behavior: 'smooth' });
+          setStatus(ext === 'webm' ? 'Done! Saved as .webm (plays in Chrome/VLC; use Chrome latest for .mp4).' : 'Done! Your video is ready below.');
+        }
+      }
+      if (ctl.cancel) setStatus('Stopped.'); else if (!record) setStatus('Preview finished. Press "Make video" to record it.');
+    } catch (err) {
+      console.error(err); setStatus('Something went wrong: ' + (err && err.message ? err.message : err));
+    } finally {
+      cleanup.forEach(f => { try { f(); } catch (e) { } });
+      running = null; setBusy(false); renderList();
+    }
+  }
+
+  /* ---------------------------------------------------------------- wiring */
+  Core.setFactory((w, h) => { const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h)); return c; });
+  const dz = $('drop');
+  ['dragenter', 'dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('on'); }));
+  ['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('on'); }));
+  dz.addEventListener('drop', e => addFiles(e.dataTransfer.files));
+  $('files').addEventListener('change', e => { addFiles(e.target.files); e.target.value = ''; });
+  $('lm').addEventListener('change', e => { addLandmarks(e.target.files); e.target.value = ''; });
+  let kt = null;
+  $('lo').addEventListener('input', () => { $('loVal').textContent = $('lo').value; clearTimeout(kt); kt = setTimeout(() => { clips.forEach(c => c.ready && computeBox(c)); renderList(); }, 150); });
+  $('protect').addEventListener('change', () => renderList());
+  $('preview').onclick = () => run(false);
+  $('go').onclick = () => run(true);
+  $('stop').onclick = () => { if (running) running.cancel = true; };
+  setBusy(false); $('loVal').textContent = $('lo').value;
+  if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) $('warn').style.display = '';
+})();
+
+</script>
+</body>
+</html>
