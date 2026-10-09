@@ -33,6 +33,7 @@ def auto_config(files, a):
     n = len(files)
     screens = a.screens or max(3, min(n + 1, 8))
     zooms = [1.0, 1.14, 1.0, 1.28]
+    depths = [0.0, 0.55, 0.15, 0.7]
     intro, pan = a.intro, a.pan
     cfg = {
         "output": {"width": 720, "height": 1280, "fps": 30, "handle": a.handle},
@@ -53,13 +54,19 @@ def auto_config(files, a):
     keys.append({"t": max(intro, 0.01), "x": x0, "zoom": 1.0, "y": 0.5})
     for i, f in enumerate(files):
         dur = _probe_duration(f)
-        z = zooms[i % len(zooms)]
         height = a.height
-        foot = 0.9
-        cyf = max(0.5, min(1 - 0.5 / z, (foot * H - (H / 2 - 70) / z) / H)) if z > 1 else 0.5
+        d = depths[i % len(depths)] if a.depth else 0.0
+        if d > 0:
+            sc_ = 1 - 0.72 * d
+            z = min(3.0, max(1.0, 0.95 / sc_))
+            ys = 0.9 + (0.61 - 0.9) * d
+            cyf = max(0.5 / z, min(1 - 0.5 / z, ys - height * sc_ / 2))
+        else:
+            z = zooms[i % len(zooms)]
+            cyf = max(0.5, min(1 - 0.5 / z, (0.9 * H - (H / 2 - 70) / z) / H)) if z > 1 else 0.5
         offset = [-0.1, 0.1, 0.0, -0.12, 0.12][i % 5] if a.stagger else 0.0
         cfg["characters"].append({"file": f, "start": round(t, 3), "x": round(xs[i], 4), "offset": offset, "height": height,
-                                  "flip": bool(a.flip_alternate and i % 2), "foot_y": foot})
+                                  "flip": bool(a.flip_alternate and i % 2), "depth": d})
         if i > 0:
             keys.append({"t": round(t, 3), "x": xs[i - 1], "zoom": zooms[(i - 1) % len(zooms)], "y": 0.5})
         keys.append({"t": round(t + (pan if i > 0 else 0.01), 3), "x": xs[i], "zoom": z, "y": round(cyf, 3)})
@@ -138,6 +145,7 @@ def cmd_init(a):
             ],
             "props": [
                 {"type": "podium", "x": 0.5, "base_y": 0.82, "height": 0.14},
+                {"type": "flag", "x": 0.6, "base_y": 0.95, "height": 0.30, "front": True},
                 {"type": "flag", "x": 0.38, "base_y": 0.82, "height": 0.30, "colors": [[196, 38, 36], [250, 190, 40], [196, 38, 36]]}
             ]
         },
@@ -147,7 +155,7 @@ def cmd_init(a):
         ],
         "characters": [
             {"file": "characters/player1.mp4", "start": 2.0, "x": 0.1, "offset": 0.0, "height": 0.62, "flip": False},
-            {"file": "characters/player2.mp4", "start": 8.0, "x": 0.5, "offset": 0.1, "height": 0.7, "trim": [0, 5]}
+            {"file": "characters/player2.mp4", "start": 8.0, "x": 0.5, "offset": 0.1, "height": 0.7, "depth": 0.6, "trim": [0, 5]}
         ],
         "grade": {"saturation": 1.08, "contrast": 1.04, "warmth": 0.3},
         "outro": 2.0
@@ -175,6 +183,7 @@ def main():
     r.add_argument("--seed", type=int, default=7)
     r.add_argument("--handheld", type=float, default=1.0, help="0 = locked-off camera")
     r.add_argument("--shuffle", action="store_true")
+    r.add_argument("--no-depth", dest="depth", action="store_false", help="keep every character on the front line (no far-back players)")
     r.add_argument("--stagger", action="store_true", default=True, help="alternate characters left/right of centre")
     r.add_argument("--flip-alternate", action="store_true")
     r.add_argument("--key-lo", type=int)
